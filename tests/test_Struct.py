@@ -74,3 +74,15 @@ def test_array_of_shorts():
     assert p.x == 0x0C
     assert p.string == [0x3130, 0x3332, 0x3534]
     assert p.y == 0xAFFA
+
+def test_inheritance():
+    class A(Struct):
+        z: Tag[bytes, 'cstring']
+        x: Tag[int, 'u8']
+    class B(A):
+        y: Tag[int, 'u16']
+    inp = b'123\x00\x0A\xBB\xCC'
+    p = B.unpack(inp)
+    assert p.z == b'123'
+    assert p.x == 0xA
+    assert p.y == 0xBBCC

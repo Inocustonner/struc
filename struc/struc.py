@@ -1,4 +1,4 @@
-from typing import Type, TypeVar, Generator, Any
+from typing import Type, TypeVar, Generator, Any, get_type_hints
 from .Serializable import GenericSeril, ArraySeril, Serializable
 from .register import TypeRegister, register_type
 from .defs import *
@@ -144,7 +144,7 @@ class Struct:
     @classmethod
     def _get_fields(cls) -> list[tuple[str, Serializable[Any]]]: 
         annotations: list[tuple[str, Serializable[Any]]] = []
-        for var, ann in cls.__annotations__.items():
+        for var, ann in get_type_hints(cls, include_extras=True).items():
             tags = list(ann.__metadata__)
             annotations.append((var, Struct._type_from_tags(tags)))
         return annotations
