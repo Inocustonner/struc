@@ -11,5 +11,6 @@
     "python.analysis.diagnosticSeverityOverrides": {
         "reportPrivateUsage": "none",
         "reportUnusedImport": "warning"
-    }
+    },
+    "python.formatting.provider": "black",
 }

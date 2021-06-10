@@ -1,23 +1,27 @@
 import struct
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
+from typing import Any, Callable, Generic, TypeVar
 
 from struc.defs import BigEndian, Endian
 
-T = TypeVar('T')
-U = TypeVar('U')
+T = TypeVar("T")
+U = TypeVar("U")
 
-SSC = TypeVar('SSC', bound='_SimpleSerializable') # type: ignore
+SSC = TypeVar("SSC", bound="_SimpleSerializable")  # type: ignore
+
 
 class Serializable(ABC, Generic[T]):
     _name: str
     _data: T
+
     def __init__(*args):
         pass
+
     # MUST work even if number of bytes more then needed
     @abstractmethod
     def _from_bytes(self, byte_array: bytes) -> tuple[T, int]:
         pass
+
     @abstractmethod
     def __bytes__(self) -> bytes:
         pass
@@ -25,7 +29,7 @@ class Serializable(ABC, Generic[T]):
 
 class _SimpleSerializable(Serializable[T]):
     # data: T
-    data_len: int # in bytes
+    data_len: int  # in bytes
     struct_fmt: str
     endian: str
 
@@ -33,26 +37,32 @@ class _SimpleSerializable(Serializable[T]):
         self.endian = endian.value
 
     def _from_bytes(self, byte_array: bytes) -> tuple[T, int]:
-        self._data = struct.unpack(f'{self.endian}{self.struct_fmt}', byte_array[:self.data_len])[0]
+        self._data = struct.unpack(
+            f"{self.endian}{self.struct_fmt}", byte_array[: self.data_len]
+        )[0]
         return self._data, self.data_len
 
     def __bytes__(self) -> bytes:
-        return struct.pack(f'{self.endian}{self.struct_fmt}', self._data)
+        return struct.pack(f"{self.endian}{self.struct_fmt}", self._data)
+
 
 class _ModifierSerializable(Serializable[T], Generic[T, U]):
     ser: Serializable[U]
+
     def __init__(self, ser: Serializable[U]):
         self.ser = ser
 
+
 class _ArraySerializable(_ModifierSerializable[U, T]):
-    length: int # number of elements
+    length: int  # number of elements
+
     def __init__(self, ser: Serializable[T], length: int):
         self.length = length
         super().__init__(ser)
-    
+
     def _from_bytes(self, byte_array: bytes) -> tuple[U, int]:
         data: list[T] = []
-        processed_len = 0 # bytes processed
+        processed_len = 0  # bytes processed
         for _ in range(self.length):
             # val_len may be dynamic
             val, val_len = self.ser._from_bytes(byte_array)
@@ -66,7 +76,29 @@ class _ArraySerializable(_ModifierSerializable[U, T]):
     def transform(arr: list[T]) -> U:
         pass
 
-    def __bytes__(self) -> bytes: ...
+    def __bytes__(self) -> bytes:
+        ...
+
+class DynamicValue(_ModifierSerializable[U, T]):
+    process_value: Callable[[T], U]
+
+    def __init__(self, ser: Serializable[T], process_value: Callable[[T], U]):
+        self.process_value = process_value
+        super().__init__(ser)
+
+    def _from_bytes(self, byte_array: bytes) -> tuple[U, int]:
+        t, l = self.ser._from_bytes(byte_array)
+        return self.process_value(t), l
+
+    def __bytes__(self) -> bytes:
+        ...
+
+class SerializableFactory(Generic[T]):
+    factory: Callable[..., Serializable[T]]
+    def __init__(self, factory: Callable[..., Serializable[T]]):
+        self.factory = factory
+    def __call__(self, *args: Any) -> Serializable[T]:
+        return self.factory(*args)
 
 GenericSeril = _SimpleSerializable
 ArraySeril = _ArraySerializable
