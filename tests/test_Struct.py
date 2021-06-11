@@ -182,3 +182,29 @@ def test_dynamic_value():
     p = A.unpack(inp)
 
     assert p.x == 4
+
+def test_ignore_non_tagged():
+    class A(Struct):
+        x: Tag[int, "u16"]
+        y: int
+        z: Tag[bytes, 'cstring']
+        a: Tag[int, "u8"]
+
+    inp = b'\xAB\xBA123\0\xAA'
+    p = A.unpack(inp)
+    assert p.x == 0xABBA
+    assert p.z == b'123'
+    assert p.a == 0xAA
+
+def test_ignore_tagged_ignore():
+    class A(Struct):
+        x: Tag[int, "u16"]
+        y: Tag[int, 'ignore', "u16"]
+        z: Tag[bytes, 'cstring']
+        a: Tag[int, "u8"]
+
+    inp = b'\xAB\xBA123\0\xAA'
+    p = A.unpack(inp)
+    assert p.x == 0xABBA
+    assert p.z == b'123'
+    assert p.a == 0xAA
