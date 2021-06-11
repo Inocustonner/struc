@@ -1,5 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+import struc
 
 from typing import (
     Callable,
@@ -168,6 +169,9 @@ TagBaseType = Union[
 ]
 BaseType = Union[Serializable[Any], DynamicTypeResolution, Type[StructBase]]
 
+def is_tag(t: type) -> bool:
+    tag_t = type(struc.Tag[int, ...])
+    return t is tag_t
 
 class Struct(StructBase):
     @staticmethod
@@ -214,6 +218,7 @@ class Struct(StructBase):
     def type_from_tags(tags: list[Any]) -> BaseType:
         def make_type(type_name: TagBaseType, *type_args: Any) -> BaseType:
             if isinstance(type_name, DynamicTypeResolution):
+                type_name.set_args(*type_args)
                 return type_name
             elif isinstance(type_name, str):
                 type_ = TypeRegister.get_type(type_name)

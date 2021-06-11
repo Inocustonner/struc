@@ -10,9 +10,12 @@ DynAction = Callable[["Struct"], list[Any]]
 
 class DynamicTypeResolution:
     action: DynAction
-
+    args: list[Any] = []
     def __init__(self, action: DynAction):
         self.action = action
 
+    def set_args(self, *args: Any):
+        self.args = args
+
     def __call__(self, inst: Struct) -> list[Any]:
-        return self.action(inst)
+        return self.action(inst, *self.args)

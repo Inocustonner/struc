@@ -147,21 +147,22 @@ def test_dtr():
     assert p.size == 0x10
     assert p.tags == 0x0A0B
 
+
 def test_sub_struct():
     class A(Struct):
-        x: Tag[int, LittleEndian, 'u16']
+        x: Tag[int, LittleEndian, "u16"]
 
     class B(Struct):
         def y_sized_array_from_a_x(self) -> list[Any]:
-            return [self.a.x, '[]', LittleEndian, 'u16']
+            return [self.a.x, "[]", LittleEndian, "u16"]
 
-        x1: Tag[int, 'u16']
+        x1: Tag[int, "u16"]
         a: Tag[A, A]
         y: Tag[list[int], DTR[y_sized_array_from_a_x]]
 
-    inp = b'\xB0\xBA' # B.x1
-    inp += b'\x03\x00' # B.a.x
-    inp += b'\x01\x00\x02\x00\x03\x00'# B.y
+    inp = b"\xB0\xBA"  # B.x1
+    inp += b"\x03\x00"  # B.a.x
+    inp += b"\x01\x00\x02\x00\x03\x00"  # B.y
 
     p = B.unpack(inp)
 
@@ -169,12 +170,15 @@ def test_sub_struct():
     assert p.a.x == 0x0003
     assert p.y == [0x0001, 0x0002, 0x0003]
 
+
 def test_dynamic_value():
     def add(x: int) -> int:
         return x + 1
+
     class A(Struct):
-        x: Tag[int, DV[add], 'u8']
-    inp = b'\x03'
+        x: Tag[int, DV[add], "u8"]
+
+    inp = b"\x03"
     p = A.unpack(inp)
 
     assert p.x == 4
