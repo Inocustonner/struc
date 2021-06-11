@@ -247,9 +247,11 @@ class Struct(StructBase):
     def _get_fields(cls) -> list[tuple[str, BaseType]]:
         annotations: list[tuple[str, BaseType]] = []
         for var, ann in get_type_hints(cls, include_extras=True).items():
-            tags = list(ann.__metadata__)
-            typ = Struct.type_from_tags(tags)
-            annotations.append((var, typ))
+            if is_tag(type(ann)):
+                tags = list(ann.__metadata__)
+                if tags[0] != 'ignore':
+                    typ = Struct.type_from_tags(tags)
+                    annotations.append((var, typ))
         return annotations
 
     def dynamic_extract(

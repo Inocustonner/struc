@@ -6,7 +6,7 @@ here = pathlib.Path(__file__).parent.resolve()
 setup(
     name='struc',  # Required
 
-    version='0.0.3',  # Required
+    version='0.0.4',  # Required
 
     author='cnvox',  # Optional
 
