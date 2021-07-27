@@ -1,9 +1,8 @@
 # from __future__ import annotations
 
-import sys
+# import sys
 from typing import Any
-
-sys.path.insert(0, "../struc")
+# sys.path.insert(0, "../struc")
 
 from struc import Struct, Tag, LittleEndian, DTR, DV
 
@@ -208,3 +207,13 @@ def test_ignore_tagged_ignore():
     assert p.x == 0xABBA
     assert p.z == b'123'
     assert p.a == 0xAA
+
+def test_benchmark(benchmark: Any):
+    class A(Struct):
+        x: Tag[int, "u16"]
+        y: Tag[int, 'ignore', "u16"]
+        z: Tag[bytes, 'cstring']
+        a: Tag[int, "u8"]
+
+    inp = b'\xAB\xBA123\0\xAA'
+    benchmark.pedantic(A.unpack, args=(inp,), iterations=4, rounds=1000)

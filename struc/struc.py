@@ -1,6 +1,8 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import struc
+from .CacheOnes import cacheOnce
+
 
 from typing import (
     Callable,
@@ -160,9 +162,7 @@ class StructBase(ABC):
     def unpack(cls, bytes_array: bytes) -> StructBase:
         pass
 
-
 S = TypeVar("S", bound="Struct")
-
 
 TagBaseType = Union[
     str, SerializableFactory[Any], DynamicTypeResolution, Type[StructBase]
@@ -243,7 +243,9 @@ class Struct(StructBase):
             ser = make_type(type_name, ser, *type_args)
         return ser
 
+    # MUST NOT BE RECURSIVE BECAUSE RESULT IS ULTIMATELY CACHED
     @classmethod
+    @cacheOnce
     def _get_fields(cls) -> list[tuple[str, BaseType]]:
         annotations: list[tuple[str, BaseType]] = []
         for var, ann in get_type_hints(cls, include_extras=True).items():
