@@ -1,12 +1,12 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import struc
-from .CacheOnes import cacheOnce
 
 
 from typing import (
     Callable,
     Generator,
+    Optional,
     Type,
     TypeVar,
     Any,
@@ -174,6 +174,8 @@ def is_tag(t: type) -> bool:
     return t is tag_t
 
 class Struct(StructBase):
+    _cached_fields: Optional[list[tuple[str, BaseType]]] = None
+
     @staticmethod
     def find_type_and_args(
         tags: list[Any],
@@ -245,8 +247,10 @@ class Struct(StructBase):
 
     # MUST NOT BE RECURSIVE BECAUSE RESULT IS ULTIMATELY CACHED
     @classmethod
-    @cacheOnce
     def _get_fields(cls) -> list[tuple[str, BaseType]]:
+        if cls._cached_fields is not None:
+            return cls._cached_fields
+
         annotations: list[tuple[str, BaseType]] = []
         for var, ann in get_type_hints(cls, include_extras=True).items():
             if is_tag(type(ann)):
@@ -254,7 +258,8 @@ class Struct(StructBase):
                 if tags[0] != 'ignore':
                     typ = Struct.type_from_tags(tags)
                     annotations.append((var, typ))
-        return annotations
+        cls._cached_fields = annotations
+        return cls._cached_fields
 
     def dynamic_extract(
         self, typ: DynamicTypeResolution, bytes_array: bytes
