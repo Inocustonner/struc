@@ -109,15 +109,15 @@ class cstring(ArraySeril[bytes, bytes]):
     length = 0
     stop_char = b"\0"
 
-    def __init__(self, length: int = 0):
-        if length < 0:
-            raise ValueError(f"Length argument must be > 0, given {length}")
+    def __init__(self, length: int = -1):
+        # if length < 0:
+        #     raise ValueError(f"Length argument must be > 0, given {length}")
         self.length = length
         super().__init__(char(), length)
 
     def _from_bytes(self, byte_array: bytes) -> tuple[bytes, int]:
         dynamic = False
-        if self.length <= 0:
+        if self.length < 0:
             dynamic = True
             self.length = byte_array.index(self.stop_char)
         val, len = super()._from_bytes(byte_array)

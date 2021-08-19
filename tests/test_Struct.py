@@ -80,6 +80,17 @@ def test_cstring_sized():
     assert p.string == b"232"
     assert p.y == 0xAFFA
 
+def test_cstring_zero_size():
+    class Blank(Struct):
+        x: Tag[int, "u8"]
+        string: Tag[bytes, 0, "cstring"]
+        y: Tag[int, LittleEndian, "u16"]
+
+    inp = b"\x0B\xFA\xAF"
+    p = Blank.unpack(inp)
+    assert p.x == 0x0B
+    assert p.string == b""
+    assert p.y == 0xAFFA
 
 def test_array_of_shorts():
     arr_t = "[]"
