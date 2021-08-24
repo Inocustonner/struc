@@ -106,6 +106,36 @@ def test_array_of_shorts():
     assert p.string == [0x3130, 0x3332, 0x3534]
     assert p.y == 0xAFFA
 
+def test_array_of_size_0():
+    arr_t = "[]"
+
+    class Blank(Struct):
+        x: Tag[int, "u8"]
+        string: Tag[list[int], 0, arr_t, LittleEndian, "u16"]
+        y: Tag[int, "u16"]
+
+    inp = b"\x0C\xAF\xFA"
+    p = Blank.unpack(inp)
+    assert p.x == 0x0C
+    assert p.y == 0xAFFA
+
+def test_array_with_struct_type():
+    arr_t = "[]"
+
+    class A(Struct):
+        x: Tag[int, 'u16']
+
+    class Blank(Struct):
+        x: Tag[int, "u8"]
+        a: Tag[list[A], 2, arr_t, A]
+        y: Tag[int, "u16"]
+
+    inp = b"\x0C\x00\xFF\xFF\x00\xAF\xFA"
+    p = Blank.unpack(inp)
+    assert p.x == 0x0C
+    assert p.a[0].x == 0x00FF
+    assert p.a[1].x == 0xFF00
+    assert p.y == 0xAFFA
 
 def test_inheritance():
     class A(Struct):

@@ -287,6 +287,11 @@ class Struct(StructBase):
             sum_processed += processed_len
         return s, sum_processed
 
+    # It is not how i must've done this, but i probably will rework the lib
+    @classmethod
+    def _from_bytes(cls: Type[S], bytes_array: bytes) -> tuple[S, int]:
+        return cls.unpack_sized(bytes_array)
+
     @classmethod
     def unpack(cls: Type[S], bytes_array: bytes) -> S:
         return cls.unpack_sized(bytes_array)[0]
