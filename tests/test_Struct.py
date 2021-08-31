@@ -6,7 +6,6 @@ from typing import Any
 
 from struc import Struct, Tag, LittleEndian, DTR, DV
 
-
 def test_pair():
     class Blank(Struct):
         x: Tag[int, "u8"]
@@ -59,25 +58,49 @@ def test_cstring_unsized():
     class Blank(Struct):
         x: Tag[int, "u8"]
         string: Tag[bytes, "cstring"]
-        y: Tag[int, "u16"]
+        y: Tag[float, LittleEndian, "f64"]
 
-    inp = b"\x0B232\x00\xFA\xAF"
+    inp = b"\x0B\x70\x77\x72\x5F\x65\x78\x74\x00\x2B\x87\x16\xD9\xCE\x97\x3B\x40"
     p = Blank.unpack(inp)
     assert p.x == 0x0B
-    assert p.string == b"232"
-    assert p.y == 0xFAAF
+    assert p.string == b"pwr_ext"
+    assert p.y == 27.593
 
+def test_1():
+    def from_type_dtr(d: 'DataBlock'):
+        return [LittleEndian, 'f64']
+
+    class DataBlock(Struct):
+        const: Tag[int, 'u16']
+        size: Tag[int, 'i32']
+        stealth_attr: Tag[int, 'i8']
+        type: Tag[int, 'i8']
+        name: Tag[bytes, 'cstring']
+        value: Tag[Any, DTR[from_type_dtr]]
+
+    inp = b'\x0b\xbb\x00\x00\x00\x12\x00\x04pwr_ext\x00+\x87\x16\xd9\xce\x97;@\x0b\xbb\x00\x00\x00\x11\x01\x03avl_inputs\x00\x00\x00\x00\x01'
+    p = DataBlock.unpack(inp)
+    p = DataBlock.unpack(inp)
+    assert p.value == 27.593
 
 def test_cstring_sized():
     class Blank(Struct):
         x: Tag[int, "u8"]
         string: Tag[bytes, 3, "cstring"]
+        string2: Tag[bytes, "cstring"]
         y: Tag[int, LittleEndian, "u16"]
 
-    inp = b"\x0B232\xFA\xAF"
+    inp = b"\x0B232123\x00\xFA\xAF"
     p = Blank.unpack(inp)
     assert p.x == 0x0B
     assert p.string == b"232"
+    assert p.string2 == b"123"
+    assert p.y == 0xAFFA
+    inp = b"\x0B23212345\x00\xFA\xAF"
+    p = Blank.unpack(inp)
+    assert p.x == 0x0B
+    assert p.string == b"232"
+    assert p.string2 == b"12345"
     assert p.y == 0xAFFA
 
 def test_cstring_zero_size():
@@ -131,7 +154,8 @@ def test_array_with_struct_type():
         y: Tag[int, "u16"]
 
     inp = b"\x0C\x00\xFF\xFF\x00\xAF\xFA"
-    p = Blank.unpack(inp)
+    p, size = Blank.unpack_sized(inp)
+    assert size == len(inp)
     assert p.x == 0x0C
     assert p.a[0].x == 0x00FF
     assert p.a[1].x == 0xFF00

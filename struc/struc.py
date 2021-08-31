@@ -106,6 +106,7 @@ class _sized_array(ArraySeril[list[T], T]):  # type: ignore
 
 @register_type
 class cstring(ArraySeril[bytes, bytes]):
+    _dynamic: bool
     length = 0
     stop_char = b"\0"
 
@@ -113,15 +114,14 @@ class cstring(ArraySeril[bytes, bytes]):
         # if length < 0:
         #     raise ValueError(f"Length argument must be > 0, given {length}")
         self.length = length
+        self._dynamic = length < 0
         super().__init__(char(), length)
 
     def _from_bytes(self, byte_array: bytes) -> tuple[bytes, int]:
-        dynamic = False
-        if self.length < 0:
-            dynamic = True
+        if self._dynamic:
             self.length = byte_array.index(self.stop_char)
         val, len = super()._from_bytes(byte_array)
-        if dynamic:
+        if self._dynamic:
             len += 1
         return val, len
 
