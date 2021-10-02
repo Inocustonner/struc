@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 from struc2 import Struct, Tag, LittleEndian, DV, DTR
 from struc2.SerializedImpl import u16
 import pytest
@@ -213,6 +213,23 @@ def test_dtr():
     p = B.unpack_b(inp)
     assert p.size == 0x10
     assert p.tags == 0x0A0B
+
+def test_dtr_optional():
+    class A(Struct):
+        def opt_cstring_from_size(self) -> Optional[list[Any]]:
+            return None
+        def cstring_from_size(self) -> list[Any]:
+            return [self.size, 'cstring']
+
+        size: Tag[int, "u8"]
+        opt: Tag[Optional[bytes], DTR[opt_cstring_from_size]]
+        arr: Tag[bytes, DTR[cstring_from_size]]
+
+    inp = b"\x03123"
+    p = A.unpack_b(inp)
+    assert p.size == 3
+    assert p.opt is None
+    assert p.arr == b'123'
 
 def test_dtr_invalid_function_no_return_annotation():
     with pytest.raises(ValueError):
