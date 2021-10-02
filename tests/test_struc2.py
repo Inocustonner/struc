@@ -1,5 +1,6 @@
 from typing import Any, Optional
 from struc2 import Struct, Tag, LittleEndian, DV, DTR
+from struc2.Serialized import Serialized
 from struc2.SerializedImpl import u16
 import pytest
 
@@ -216,7 +217,7 @@ def test_dtr():
 
 def test_dtr_optional():
     class A(Struct):
-        def opt_cstring_from_size(self) -> Optional[list[Any]]:
+        def opt_cstring_from_size(self) -> Optional[Serialized[Any]]:
             return None
         def cstring_from_size(self) -> list[Any]:
             return [self.size, 'cstring']

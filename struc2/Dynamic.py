@@ -79,7 +79,7 @@ class DynamicTypeResolution(SerializedFactory[Any], Generic[InstT, SerF_RetT, Re
 
     def _is_supported_return(self, t: Any) -> bool:
         # return t == GenericAlias(list, Any) or self._is_Serialized(t)
-        return t is type(None) or get_origin(t) is list or self._is_Serialized(t)
+        return t is type(None) or get_origin(t) is list or get_origin(t) is Serialized or self._is_Serialized(t)
 
     def _is_Serialized(self, t: type):
         return issubclass(t, SerializedDecoder) and issubclass(t, SerializedCompositor)
