@@ -1,4 +1,4 @@
-from typing import Any, TypeVar, cast, final
+from typing import Any, TypeVar, cast
 
 from struc2.TagParser import TagParser
 
@@ -7,7 +7,6 @@ import io
 
 StructT = TypeVar("StructT", bound='Struct')
 
-@final
 class Struct(SerializedFactory['Struct'], TagParser):
     # i don't use `instance`, because instance is suppused to be deserializable struct in current state
     # for some meta information for dynamic type resolution 
