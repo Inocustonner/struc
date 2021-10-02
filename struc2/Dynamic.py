@@ -40,11 +40,13 @@ class DynamicValue(SerializedFactory[OutT], Generic[RetT, OutT]):
     def __init__(self, f: Callable[[RetT], OutT]):
         self._f = f
 
-    def _unpack(self, stream: Reader, instance: Any) -> OutT:
-        return self._f(self._ser._unpack(stream, instance))
+    def _unpack(self, stream: Reader, instance: Any) -> tuple[OutT, int]:
+        res, read = self._ser._unpack(stream, instance)
+        return self._f(res), read
 
-    async def _unpack_async(self, stream: AsyncReader, instance: Any) -> OutT:
-        return self._f(await self._ser._unpack_async(stream, instance))
+    async def _unpack_async(self, stream: AsyncReader, instance: Any) -> tuple[OutT, int]:
+        res, read = await self._ser._unpack_async(stream, instance)
+        return self._f(res), read
 
     def _compose(self, ser: SerializedDecoder[RetT]) -> None:
         self._ser = ser
@@ -96,18 +98,18 @@ class DynamicTypeResolution(SerializedFactory[Any], Generic[InstT, SerF_RetT, Re
         # else:
         #     raise ValueError("Unexpected type from dynamic resolution")
 
-    def _unpack(self, stream: Reader, instance: InstT) -> Any:
+    def _unpack(self, stream: Reader, instance: InstT) -> tuple[Any, int]:
         ser = self._get_serialized(instance)
         if ser is None:
-            return None
+            return None, 0
         if self._composition_ser is not None:
             ser._compose(self._composition_ser)
         return ser._unpack(stream, instance)
 
-    async def _unpack_async(self, stream: AsyncReader, instance: Any) -> Any:
+    async def _unpack_async(self, stream: AsyncReader, instance: Any) -> tuple[Any, int]:
         ser = self._get_serialized(instance)
         if ser is None:
-            return None
+            return None, 0
         if self._composition_ser is not None:
             ser._compose(self._composition_ser)
         return await ser._unpack_async(stream, instance)

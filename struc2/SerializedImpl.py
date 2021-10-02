@@ -1,5 +1,5 @@
 import struct
-from typing import TYPE_CHECKING, Annotated, Any, Optional
+from typing import TYPE_CHECKING, Annotated, Any, Callable, Optional, TypeVar
 
 from .defs import Endian
 from .Serialized import AsyncReader, Generic, Reader, SerializedFactory, SerializedDecoder
@@ -23,16 +23,16 @@ class SerializedSimple(SerializedFactory["RetT"], Generic[RetT]):
     def __init__(self, endian: Endian = Endian.Big):
         self._endian = endian
 
-    def _unpack(self, stream: Reader, instance: Any) -> "RetT":
+    def _unpack(self, stream: Reader, instance: Any) -> tuple[RetT, int]:
         return struct.unpack(
             f"{self._endian.value}{self.struct_type}", stream.read(self.struct_type_size)
-        )[0]
+        )[0], self.struct_type_size
 
-    async def _unpack_async(self, stream: AsyncReader, instance: Any) -> "RetT":
+    async def _unpack_async(self, stream: AsyncReader, instance: Any) -> tuple[RetT, int]:
         return struct.unpack(
             f"{self._endian.value}{self.struct_type}",
-            await stream.readexactly(self.struct_type_size),
-        )[0]
+            await stream.read(self.struct_type_size),
+        )[0], self.struct_type_size
 
     def _compose(self, ser: SerializedDecoder[Any]) -> None:
         pass
@@ -47,48 +47,87 @@ class SerializedString(SerializedFactory[bytes]):
     def __init__(self, length: Optional[int] = None):
         self._length = length
 
-    def _unpack(self, stream: Reader, instance: Any) -> bytes:
+    def _unpack(self, stream: Reader, instance: Any) -> tuple[bytes, int]:
         if self._length is not None:
-            return stream.read(self._length)
+            return stream.read(self._length), self._length
         s = b""
         while (ch := stream.read(1)) != self._eof_char:
             s += ch
-        return s
+        return s, len(s) + 1
 
-    async def _unpack_async(self, stream: AsyncReader, instance: Any) -> bytes:
+    async def _unpack_async(self, stream: AsyncReader, instance: Any) -> tuple[bytes, int]:
         if self._length is not None:
-            return await stream.readexactly(self._length)
+            return await stream.read(self._length), self._length
         s = b""
-        while (ch := await stream.readexactly(1)) != self._eof_char:
+        while (ch := await stream.read(1)) != self._eof_char:
             s += ch
-        return s
+        return s, len(s) + 1
 
     def _compose(self, ser: SerializedDecoder[Any]) -> None:
         pass
 
 @register_type
-class SerializedArray(SerializedFactory[list["RetT"]], Generic[RetT]):
+class SerializedArray(SerializedFactory[list[RetT]], Generic[RetT]):
     _name = "[]"
 
     _length: int
-    _ser: SerializedDecoder["RetT"]
+    _ser: SerializedDecoder[RetT]
 
     def __init__(self, length: int):
         self._length = length
 
-    def _unpack(self, stream: Reader, instance: Any) -> list["RetT"]:
+    def _unpack(self, stream: Reader, instance: Any) -> tuple[list[RetT], int]:
         r = list["RetT"]()
+        size: int = 0
         for _ in range(self._length):
-            r.append(self._ser._unpack(stream, instance))
-        return r
+            res, read = self._ser._unpack(stream, instance)
+            r.append(res)
+            size += read
+        return r, size
 
-    async def _unpack_async(self, stream: AsyncReader, instance: Any) -> list["RetT"]:
+    async def _unpack_async(self, stream: AsyncReader, instance: Any) -> tuple[list[RetT], int]:
         r = list["RetT"]()
+        size: int = 0
         for _ in range(self._length):
-            r.append(await self._ser._unpack_async(stream, instance))
-        return r
+            res, read = await self._ser._unpack_async(stream, instance)
+            r.append(res)
+            size += read
+        return r, size
 
-    def _compose(self, ser: SerializedDecoder["RetT"]) -> None:
+    def _compose(self, ser: SerializedDecoder[RetT]) -> None:
+        self._ser = ser
+
+InstT = TypeVar('InstT')
+_Pred = Callable[[InstT, int], bool]
+@register_type
+class SerializedArrayWithPredicate(SerializedFactory[list[RetT]], Generic[RetT, InstT]):
+    _name = "predicate_array"
+
+    _predicate: _Pred[InstT]
+    _ser: SerializedDecoder[RetT]
+
+    def __init__(self, predicate: _Pred[InstT]):
+        self._predicate = predicate
+
+    def _unpack(self, stream: Reader, instance: InstT) -> tuple[list[RetT], int]:
+        r = list["RetT"]()
+        size: int = 0
+        while self._predicate(instance, size):
+            res, read = self._ser._unpack(stream, instance)
+            r.append(res)
+            size += read
+        return r, size
+
+    async def _unpack_async(self, stream: AsyncReader, instance: InstT) -> tuple[list[RetT], int]:
+        r = list["RetT"]()
+        size: int = 0
+        while self._predicate(instance, size):
+            res, read = await self._ser._unpack_async(stream, instance)
+            r.append(res)
+            size += read
+        return r, size
+
+    def _compose(self, ser: SerializedDecoder[RetT]) -> None:
         self._ser = ser
 
 @register_type

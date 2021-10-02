@@ -2,12 +2,14 @@ from typing import Any, Optional
 from struc2 import Struct, Tag, LittleEndian, DV, DTR
 from struc2.Serialized import Serialized
 from struc2.SerializedImpl import u16
+import aiofiles.tempfile
+import asyncio
 import pytest
 
 def test_pair():
     class Blank(Struct):
         x: Tag[int, "u8"]
-        y: Tag[int, "u16"]
+        y: Tag[int, u16]
 
     inp = b"\x0A\xF0\x0A"
     p = Blank.unpack_b(inp)
@@ -50,6 +52,18 @@ def test_sized_array2():
     assert p.x == 0xFF0A
     assert p.arr == [b"2", b"3", b"2"]
 
+def test_predicate_array():
+    class Blank(Struct):
+        def _pred(self, read: int):
+            return self.x > read
+
+        x: Tag[int, LittleEndian, "u16"]
+        arr: Tag[list[bytes], _pred, "predicate_array", "char"]
+
+    inp = b"\x03\x00232"
+    p = Blank.unpack_b(inp)
+    assert p.x == 3
+    assert p.arr == [b"2", b"3", b"2"]
 
 def test_cstring_unsized():
     class Blank(Struct):
@@ -277,6 +291,27 @@ def test_dtr_and_strings_and_dv():
     p = DataBlock.unpack_b(inp)
     p = DataBlock.unpack_b(inp)
     assert p.value == 27.593 / 10
+
+def test_dtr_and_strings_and_dv_async():
+    def from_type_dtr(d: 'DataBlock') -> list[Any]:
+        return [LittleEndian, 'f64']
+
+    class DataBlock(Struct):
+        const: Tag[int, 'u16']
+        size: Tag[int, 'i32']
+        stealth_attr: Tag[int, 'i8']
+        type: Tag[int, 'i8']
+        name: Tag[bytes, 'cstring']
+        value: Tag[Any, DV[lambda v: v / 10], DTR[from_type_dtr]]
+
+    async def main():
+        async with aiofiles.tempfile.TemporaryFile() as f: # type: ignore
+            inp = b'\x0b\xbb\x00\x00\x00\x12\x00\x04pwr_ext\x00+\x87\x16\xd9\xce\x97;@\x0b\xbb\x00\x00\x00\x11\x01\x03avl_inputs\x00\x00\x00\x00\x01'
+            await f.write(inp) # type: ignore
+            await f.seek(0) # type: ignore
+            p = await DataBlock.unpack_async(f) # type: ignore
+            assert p.value == 27.593 / 10 # type: ignore
+    asyncio.run(main())
 
 def test_benchmark_normal(benchmark: Any):
     class A(Struct):
