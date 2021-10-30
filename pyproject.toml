@@ -3,6 +3,10 @@ name = "struc"
 version = "0.3.1"
 description = ""
 authors = ["Egor Sivokhin <steammycss@gmail.com>"]
+packages = [
+    { include = "struc" },
+    { include = "struc2" },
+]
 
 [tool.poetry.dependencies]
 python = "^3.9"
