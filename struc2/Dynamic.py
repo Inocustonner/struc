@@ -64,39 +64,33 @@ class DynamicTypeResolution(SerializedFactory[Any], Generic[InstT, SerF_RetT, Re
 
     def __init__(self, f: Callable[[InstT], SerF_RetT]):
         self._f = f
-        self._check_signature(f)
+    #     self._check_signature(f)
 
-    def _check_signature(self, f: Callable[..., Any]):
-        sign = inspect.signature(f)
-        ret = sign.return_annotation
-        if isinstance(ret, type(Union[Any, str])):
-            for arg in ret.__args__:
-                assert self._is_supported_return(
-                    arg
-                ), f"{arg} is not supported type for DTR"
-        elif ret is not Any and ret is not inspect._empty:
-            assert self._is_supported_return(ret), f"Is not supported return {ret}"
-        else:
-            raise ValueError("DTR function must have return signature")
+    # def _check_signature(self, f: Callable[..., Any]):
+    #     sign = inspect.signature(f)
+    #     ret = sign.return_annotation
+    #     if isinstance(ret, type(Union[Any, str])):
+    #         for arg in ret.__args__:
+    #             assert self._is_supported_return(
+    #                 arg
+    #             ), f"{arg} is not supported type for DTR"
+    #     elif ret is not Any and ret is not inspect._empty:
+    #         assert self._is_supported_return(ret), f"Is not supported return {ret}"
+    #     else:
+    #         raise ValueError("DTR function must have return signature")
 
-    def _is_supported_return(self, t: Any) -> bool:
-        # return t == GenericAlias(list, Any) or self._is_Serialized(t)
-        return t is type(None) or get_origin(t) is list or get_origin(t) is Serialized or self._is_Serialized(t)
+    # def _is_supported_return(self, t: Any) -> bool:
+    #     # return t == GenericAlias(list, Any) or self._is_Serialized(t)
+    #     return t is type(None) or get_origin(t) is list or get_origin(t) is Serialized or self._is_Serialized(t)
 
-    def _is_Serialized(self, t: type):
-        return issubclass(t, SerializedDecoder) and issubclass(t, SerializedCompositor)
+    # def _is_Serialized(self, t: type):
+    #     return issubclass(t, SerializedDecoder) and issubclass(t, SerializedCompositor)
 
     def _get_serialized(self, instance: InstT) -> Optional[Serialized[Any]]:
         r = self._f(instance)
         if type(r) is list:
             return TagType.parse_tags(tuple(cast(list[Any], self._f(instance)))).ser
-        # isinstance checks take alot of time
-        # and i will to rely on type checking of input function, that must have type annotations
         return cast(Optional[Serialized[Any]], r)
-        # elif isinstance(r, SerializedDecoder) and isinstance(r, SerializedCompositor):
-        #     return cast(Serialized[Any], r)
-        # else:
-        #     raise ValueError("Unexpected type from dynamic resolution")
 
     def _unpack(self, stream: Reader, instance: InstT) -> tuple[Any, int]:
         ser = self._get_serialized(instance)
